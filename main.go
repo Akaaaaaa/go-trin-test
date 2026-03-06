@@ -1,9 +1,12 @@
 package main
 
 // импортируйте нужные пакеты
-import "time"
-
-// ...
+import (
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
+)
 
 const (
 	K1 = 0.035
@@ -20,6 +23,24 @@ var (
 
 func parsePackage(data string) (t time.Time, steps int, ok bool) {
 	// 1. Разделите строку на две части по запятой в слайс ds
+	ds := strings.Split(data, ",")
+	if len(ds) != 2 {
+		return
+	}
+
+	var err error
+
+	t, err = time.Parse(Format, strings.TrimSpace(ds[0]))
+	if err != nil {
+		return
+	}
+
+	steps, err = strconv.Atoi(strings.TrimSpace(ds[1]))
+	if err != nil || steps < 0 {
+		return
+	}
+	ok = true
+	return
 	// 2. Проверьте, чтобы ds состоял из двух элементов
 	// 3. Используйте strings.TrimSpace() для очистки пробелов
 	// 4. Парсите время с помощью time.Parse()
@@ -29,6 +50,14 @@ func parsePackage(data string) (t time.Time, steps int, ok bool) {
 }
 
 func stepsDay(storage []string) int {
+	total := 0
+	for _, pkg := range storage {
+		_, steps, ok := parsePackage(pkg)
+		if ok {
+			total += steps
+		}
+	}
+	return total
 	// тема оптимизации не затрагивается, поэтому можно
 	// использовать parsePackage для каждого элемента списка
 	// Не забудьте проверить ok перед добавлением шагов!
@@ -36,23 +65,33 @@ func stepsDay(storage []string) int {
 }
 
 func calories(distance float64) float64 {
+	timeMinute := distance / Speed / 60
+	burn := (K1*Weight + (Speed*Speed/Height)*K2*Weight) * timeMinute
 	// Расчёт времени в минутах: distance / Speed / 60
-	// Расчёт калорий по формуле: (K1*Weight + (Speed*Speed/Height)*K2*Weight) * timeMinutes
+	// Расчёт калорий по формуле: s
 	// ...
+	return burn
 }
 
 func achievement(distance float64) string {
-	// Возвращайте мотивирующие сообщения в зависимости от дистанции:
-	// >= 6.5 км: "Отличный результат! Цель достигнута."
-	// >= 3.9 км: "Неплохо! День был продуктивный."
-	// >= 2.0 км: "Завтра наверстаем!"
-	// < 2.0 км: "Лежать тоже полезно. Главное — участие, а не победа!"
+	if distance >= 6.5 {
+		return "Отличный результат! Цель достигнута."
+	} else if distance >= 3.9 {
+		return "Неплохо! День был продуктивный."
+	} else if distance >= 2.0 {
+		return "Завтра наверстаем!"
+	}
+	return "Лежать тоже полезно. Главное — участие, а не победа!"
+
+	//
+	// < 2.0 км:
 	// ...
 }
 
 func showMessage(s string) {
+	fmt.Println(s)
 	// Выведите сообщение и пустую строку
-	// ...
+	fmt.Println()
 }
 
 func AcceptPackage(data string, storage []string) []string {
@@ -61,24 +100,55 @@ func AcceptPackage(data string, storage []string) []string {
 	//    выведите сообщение в случае ошибки
 	//    также проверьте количество шагов на равенство нулю
 	// ...
+	t, steps, ok := parsePackage(data)
+	if !ok {
+		showMessage("ошибочный формат")
+		return storage
+	}
+	if steps == 0 {
+		return storage
+	}
 
 	// 2. Получите текущее UTC-время и сравните дни
 	//    выведите сообщение, если день в пакете t.Day() не совпадает
 	//    с текущим днём
 	// ...
+	now := time.Now().UTC()
+
+	if t.Day() != now.Day() {
+		showMessage("неверный день")
+		return storage
+	}
 
 	// 3. Проверьте, что время пакета не больше текущего
 	// ...
+	if t.After(now) {
+		showMessage("некорректное значение времени")
+		return storage
+	}
 
 	// 4. Если есть предыдущие пакеты, проверьте корректность времени
 	//    и смену суток
 	// ...
+	if len(storage) > 0 {
+		if data[:8] != storage[len(storage)-1][:8] {
+			storage = storage[:0]
+		}
+	}
 
 	// 5. Добавить пакет в storage
+	storage = append(storage, data)
 	// 6. Получить общее количество шагов
+	totalSteps := stepsDay(storage)
 	// 7. Вычислить общее расстояние (в метрах)
-	// 8. Получить потраченные килокалории
+	distanceM := float64(totalSteps) * StepLength
+	distanceKM := distanceM / 1000
+	// 8. Получить потраченные кило калории
+	cal := calories(distanceM)
 	// 9. Получить мотивирующий текст
+	ach := achievement(distanceKM)
+	message := fmt.Sprintf("Время: %s\nКоличество шагов за день: %d\n Дистанция составил: %.2f км.\nВы сожгли: %.2f ккал.\n%s", t.Format("15:04:05"), totalSteps, distanceKM, cal, ach)
+	showMessage(message)
 	// 10. Сформировать и вывести полный текст сообщения
 	// 11. Вернуть storage
 	// ...
